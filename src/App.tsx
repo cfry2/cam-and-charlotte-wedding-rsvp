@@ -1,67 +1,47 @@
-import { useEffect, useState } from "react";
-import Button from "@mui/material/Button";
-import styled from "@emotion/styled";
-import queryString from "query-string";
-import FormGroup from "@mui/material/FormGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Checkbox from "@mui/material/Checkbox";
-import { initializeApp } from "firebase/app";
-import Backdrop from "@mui/material/Backdrop";
-import CircularProgress from "@mui/material/CircularProgress";
-import { getDatabase, ref, child, get, set } from "firebase/database";
-import TextField from "@mui/material/TextField";
-import Container from "@mui/material/Container";
+import { useEffect, useState } from 'react';
+import Button from '@mui/material/Button';
+import styled from '@emotion/styled';
+import queryString from 'query-string';
+import FormGroup from '@mui/material/FormGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
+import Backdrop from '@mui/material/Backdrop';
+import CircularProgress from '@mui/material/CircularProgress';
+import { getDatabase, ref, child, get, set } from 'firebase/database';
+import TextField from '@mui/material/TextField';
+import Container from '@mui/material/Container';
 
 const Heading = styled.div({
-  fontFamily: "Roboto",
-  fontSize: "40px",
+  fontFamily: 'Roboto',
+  fontSize: '40px',
 });
 
-const {
-  VITE_apiKey,
-  VITE_authDomain,
-  VITE_databaseURL,
-  VITE_projectId,
-  VITE_storageBucket,
-  VITE_messagingSenderId,
-  VITE_appId,
-  VITE_measurementId,
-} = import.meta.env;
-console.log(import.meta);
-const firebaseConfig = {
-  apiKey: VITE_apiKey,
-  authDomain: VITE_authDomain,
-  databaseURL: VITE_databaseURL,
-  projectId: VITE_projectId,
-  storageBucket: VITE_storageBucket,
-  messagingSenderId: VITE_messagingSenderId,
-  appId: VITE_appId,
-  measurementId: VITE_measurementId,
+type Snapshot = {
+  dietries: string;
+  rsvp: boolean;
+  hasSubmitted: boolean;
 };
 
-initializeApp(firebaseConfig);
-
 function App() {
-  const { user } = queryString.parse(location.search);
-
+  const query = queryString.parse(location.search) as { user: string };
+  const user = query.user || '';
   const [form, setForm] = useState({
     isLoading: true,
     rsvp: false,
-    dietries: "",
+    dietries: '',
     hasSubmitted: false,
   });
 
   const { isLoading, rsvp, dietries, hasSubmitted } = form;
-
   useEffect(() => {
     const dbRef = ref(getDatabase());
     get(child(dbRef, `invites/${user}`))
       .then((snapshot) => {
         if (snapshot.exists()) {
-          const { dietries, rsvp } = snapshot.val();
+          const { dietries, rsvp } = snapshot.val() as Snapshot;
           setForm({ ...form, isLoading: false, dietries, rsvp });
         } else {
-          console.log("No data available");
+          console.log('No data available');
         }
       })
       .catch((error) => {
@@ -70,22 +50,23 @@ function App() {
       });
   }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const db = getDatabase();
-    set(ref(db, `invites/${user}`), {
+    await set(ref(db, `invites/${user}`), {
       rsvp,
       dietries,
     });
-    handleSubmitToggle();
+    await handleSubmitToggle();
   };
 
   const handleSubmitToggle = async () => {
     setForm({ ...form, isLoading: true });
     const dbRef = ref(getDatabase());
     const snapshot = await get(child(dbRef, `invites/${user}`));
-    const { hasSubmitted } = snapshot.val();
+    const { hasSubmitted } = snapshot.val() as Snapshot;
     await set(child(dbRef, `invites/${user}/hasSubmitted`), !hasSubmitted);
     setForm({ ...form, hasSubmitted: !hasSubmitted, isLoading: false });
+    return true;
   };
 
   return (
@@ -117,7 +98,12 @@ function App() {
                 label="Any dietry requirements?"
                 variant="outlined"
                 value={dietries}
-                onChange={(e) => setForm({ ...form, dietries: e.target.value })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    dietries: e.target.value,
+                  })
+                }
               />
               <Button onClick={handleSubmit} variant="contained">
                 Submit
@@ -128,7 +114,10 @@ function App() {
       </Container>
 
       <Backdrop
-        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        sx={{
+          color: '#fff',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
         open={isLoading}
       >
         <CircularProgress color="inherit" />
